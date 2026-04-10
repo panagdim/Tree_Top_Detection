@@ -1,146 +1,3 @@
-# %%
-# Works better with Conifers 
-
-import rasterio
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from skimage.feature import peak_local_max
-from scipy.ndimage import gaussian_filter
-from rasterio.warp import reproject, Resampling
-from tkinter import Tk, filedialog 
-
-# 1. File selection | Select the DTM 
-
-Tk().withdraw()  # hide Tkinter root window
-
-print("Select DEM (DTM) file")
-dem_path = filedialog.askopenfilename(
-    title="Select DEM (DTM)",
-    filetypes=[("GeoTIFF files", "*.tif *.tiff")]
-)
-
-# Select the DSM
-print("Select DSM file")
-dsm_path = filedialog.askopenfilename(
-    title="Select DSM",
-    filetypes=[("GeoTIFF files", "*.tif *.tiff")]
-)
-
-# 2. Load DEM and DSM
-
-with rasterio.open(dem_path) as dem_src, rasterio.open(dsm_path) as dsm_src:
-    dem = dem_src.read(1).astype(float)
-    transform = dem_src.transform
-    dem_crs = dem_src.crs
-
-    dsm = dsm_src.read(1).astype(float)
-
-    # Resample DSM to DEM grid
-    dsm_resampled = np.empty_like(dem, dtype=float)
-    reproject(
-        source=dsm,
-        destination=dsm_resampled,
-        src_transform=dsm_src.transform,
-        src_crs=dsm_src.crs,
-        dst_transform=dem_src.transform,
-        dst_crs=dem_crs,
-        resampling=Resampling.bilinear
-    )
-
-# 3. Compute CHM (Canopy Height Model)
-
-chm = dsm_resampled - dem
-chm[chm < 0] = 0  # remove negative heights
-
-
-# 4. Smooth CHM for broadleaf crowns
-
-sigma_smooth = 3  # adjust according to crown size
-chm_smooth = gaussian_filter(chm, sigma=sigma_smooth)
-
-# 5. Detect tree tops
-
-min_distance_pixels = 3  # approx half average crown diameter
-min_height = 2.5           # minimum tree height to detect (meters)
-
-coordinates = peak_local_max(
-    chm_smooth,
-    min_distance=min_distance_pixels,
-    threshold_abs=min_height
-)
-
-# 6. Extract tree data
-
-tree_heights = chm_smooth[coordinates[:, 0], coordinates[:, 1]]
-
-# 6a. Remove extreme tree heights
-
-# Remove heights <=0 and > maximum expected (e.g., 25 m)
-max_tree_height = 5
-valid_idx = np.where((tree_heights > 0) & (tree_heights <= max_tree_height))[0]
-
-coordinates_filtered = coordinates[valid_idx]
-tree_heights_filtered = tree_heights[valid_idx]
-
-# Optional: further filter using mean ± 2*std
-mean_h = np.mean(tree_heights_filtered)
-std_h = np.std(tree_heights_filtered)
-valid_idx2 = np.where((tree_heights_filtered >= mean_h - 2*std_h) &
-                      (tree_heights_filtered <= mean_h + 2*std_h))[0]
-
-coordinates_filtered = coordinates_filtered[valid_idx2]
-tree_heights_filtered = tree_heights_filtered[valid_idx2]
-
-
-# 7. Save filtered tree data to CSV
-
-df_filtered = pd.DataFrame({
-    "Tree_ID": np.arange(1, len(coordinates_filtered) + 1),
-    "X": coordinates_filtered[:, 0],
-    "Y": coordinates_filtered[:, 1],
-    "Height": tree_heights_filtered
-})
-
-output_csv = "C:/Users/Dimitris/Desktop/Tree Top Detection.csv"
-df_filtered.to_csv(output_csv, index=False)
-
-print(f"Filtered tree data saved to {output_csv}")
-
-# Print the number of detected trees
-num_trees = len(df_filtered)
-print(f"Number of filtered trees detected: {num_trees}")
-
-
-# 8. Visualization
-
-plt.figure(figsize=(10, 8))
-plt.imshow(df_filtered, cmap='viridis')
-plt.scatter(
-    coordinates[:, 1],
-    coordinates[:, 0],
-    c='red',
-    s=8,
-    label='Tree Tops'
-)
-plt.legend()
-
-plt.title("Detected Tree Tops")
-#plt.colorbar(label="Height (m)")
-
-# Add North Arrow | Position in axes fraction (top-left corner)
-ax = plt.gca()
-ax.annotate('N', xy=(0.95, 0.15), xytext=(0.95, 0.05),
-            arrowprops=dict(facecolor='black', width=3, headwidth=10),
-            ha='center', va='center', fontsize=12, xycoords='axes fraction')
-
-plt.savefig("tree_tops.png", dpi=300)
-plt.show()
-
-
-# %%
-# ADAPTIVE UAV TREE TOP DETECTION 
-
 import rasterio
 import numpy as np
 import pandas as pd
@@ -214,7 +71,6 @@ coordinates = peak_local_max(
 )
 
 num_trees = len(coordinates)
-
 
 # 6. EVALUATION OF FOREST METRICS (DECISION + COVER BASE)
 
@@ -324,7 +180,6 @@ else:
     crown_area_m2 = num_trees * avg_crown_area
     occupancy_percent = (crown_area_m2 / image_area) * 100
 
-
 # FOREST COVER METRICS + CLASSIFICATION
 
 print("\n=== FOREST COVER METRICS ===")
@@ -402,5 +257,3 @@ ax.annotate(
 plt.legend()
 plt.savefig("adaptive_tree_detection_dsm_overlay.png", dpi=300)
 plt.show()
-
-
