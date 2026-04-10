@@ -19,4 +19,4 @@ Overall, the system offers an efficient and automated solution for UAV-based for
 
 Domain: Forestry
 
-Contributor: Dimitris Panagiotis
+Contributor: Dimitris Panagiotidis
