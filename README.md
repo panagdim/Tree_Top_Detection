@@ -11,8 +11,11 @@ An adaptive decision system evaluates vegetation structure based on density and 
 The workflow extracts: 
 
 a) georeferenced tree positions and 
+
 b) heights 
+
 c) computes canopy cover (%) as an indicator of vegetation extent.
+
 d) It also classifies canopy conditions into low, medium, and high density and provides visual outputs over DSM backgrounds for interpretation.
 
 Overall, the system offers an efficient and automated solution for UAV-based forest and orchard analysis, supporting applications in forestry inventory and precision agriculture.
