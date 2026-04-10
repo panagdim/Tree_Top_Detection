@@ -1,6 +1,7 @@
 This study presents an automated UAV-based workflow (very-high resolution imagery) for: 
 
 a) tree detection and 
+
 b) canopy structure analysis using DSM and DTM data to generate a Canopy Height Model (CHM).
 
 The CHM is smoothed and used to detect tree tops through a local maxima approach.
